@@ -30,8 +30,9 @@ int main()
     }
     //test myfclose
     myfclose(ptr_file);
-    /*//test myfgetc
-    // reopen file in read mode
+    //test myfgetc
+
+    //reopen file in read mode
     ptr_file = myfopen("testfile.txt", "r");
     // check file opened
     if (ptr_file == NULL)
@@ -40,9 +41,12 @@ int main()
       return 0;
     }
     //call myfgetc
-    myfgetc(ptr_file);
+    if (myfgetc(ptr_file) == EOF)
+    {
+      return 0;
+    }
     // close again
-    myfclose(ptr_file);*/
+    myfclose(ptr_file);
     
     writedisk("virtualdiskC3_C1"); 
     

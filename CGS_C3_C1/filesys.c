@@ -281,7 +281,7 @@ int findUNUSEDdirentry (dirblock_t *dir)
 {
    for (int i=0;i<DIRENTRYCOUNT;++i)
    {
-      if (dir->entrylist[i].unused = TRUE && dir->entrylist[i].entrylength == 0)
+      if (dir->entrylist[i].unused == TRUE && dir->entrylist[i].entrylength == 0)
       {
          //printf("file found at index %d\n", i);
          return i;
@@ -360,7 +360,7 @@ void myfclose ( MyFILE * stream )
 {
    writeblock(&stream->buffer, stream->blockno);
    free(stream);
-   printf("file is now closed");
+   printf("file is now closed\n");
 }
 
 /*  myfgetc function
@@ -373,6 +373,7 @@ int myfgetc ( MyFILE * stream )
       printf("MyFILE mode not set to 'r' mode\n");
       return EOF;
    }
+
    // get block number
    int nextblock = stream->blockno;
    // array to store text
@@ -407,7 +408,6 @@ int myfgetc ( MyFILE * stream )
    // writes text file to copy file
    fprintf(realfile, text);
    fclose(realfile);
-   return NULL;
 }
 
 /*  myfputc function
@@ -459,40 +459,60 @@ void myfputc ( int b, MyFILE * stream )
  */
 void mymkdir ( const char * path )
 {
-   char *token, *rest; // token and save pointer
+   char *token, *rest; // tokenize path and save pointer
    char *pathCopy = strdup(path); // copy path
-   dirblock_t *currentParent = &virtualDisk[3].dir; // root original parent direcotry
+   diskblock_t *currentParent = &virtualDisk[rootDirIndex]; // root original parent direcotry
+   currentDirIndex = rootDirIndex;//get root block index
+   token = strtok_r(pathCopy, "/", &rest); // tokenize path
    //search each directory in path, if they don't exist create the directory in the path
-   int i = 1;
-   while ((token = strtok_r(pathCopy, "/", &rest)) != NULL)
+   while (token != NULL)
    {
-      // check if the current directory (token) exists in the current parent directory
-      int dirIndex = findfilebyname(currentParent, token);
-      if (dirIndex != EOF)
+      // find directory index in current directory
+      int dirIndex = findfilebyname(&currentParent->dir, token);
+      // if found
+      if (dirIndex != EOF) // return an index
       {
-         printf("Directory %s already exists\n", token);
-         // then traverse parent to firstlevel
-         currentParent = &currentParent->entrylist[dirIndex];
-         //repeat until to have to create a new directory
+         // update the current parent to next dir
+         currentDirIndex = currentParent->dir.entrylist[dirIndex].firstblock; // get fat index 
+         currentParent = &virtualDisk[currentDirIndex]; // update currentparent
       }
-      else /* if the directory (token) is not found in parent cell*/
+      else // the index was not found
       {
-         //create new directory inside the parent cell
-         //find an unused entry inside directory
-         dirIndex = findUNUSEDdirentry(currentParent);
-         // initialise cell
-         currentParent->entrylist[dirIndex].entrylength = 0;
-         currentParent->entrylist[dirIndex].filelength = 0;
-         currentParent->entrylist[dirIndex].firstblock = rootDirIndex + i;
-         currentParent->entrylist[dirIndex].isdir = TRUE;
-         strncpy(currentParent->entrylist[dirIndex].name, token, MAXNAME);
-         currentParent->entrylist[dirIndex].unused = FALSE;
-         
-         virtualDisk[rootDirIndex + i].dir.isdir = TRUE;
-         virtualDisk[rootDirIndex + i].dir.nextEntry = 0;
+         // then we have to create that directory inside currentParent
+         dirIndex = findUNUSEDdirentry(&currentParent->dir); // find unused dir in current parent
+         if (dirIndex  == EOF)
+         {
+            printf("All entries used up! \n");
+         }
+         else 
+         {
+            int fatIndex = findUNUSEDfatentry(); // find an unused fat entry
+            if (fatIndex == ENDOFCHAIN) // end not found
+            {
+               printf("FAT table is full!\n");
+            }
+            else
+            {
+               // initialise the next level directory
+               currentParent->dir.entrylist[dirIndex].firstblock = fatIndex; // set firstblock to found entry
+               currentParent->dir.entrylist[dirIndex].isdir = TRUE; // is dir
+               currentParent->dir.entrylist[dirIndex].unused = FALSE;// used
+               strncpy(currentParent->dir.entrylist[dirIndex].name, token, MAXNAME); // set name
+               addfatentry(fatIndex); // add entry to fat table
+               writeblock(currentParent, currentDirIndex); // write the current parent block
+               currentDirIndex = fatIndex; // update current Index
+               currentParent = &virtualDisk[currentDirIndex]; // give it a block
+               currentParent->dir.isdir = TRUE; // new block is dir
+               currentParent->dir.nextEntry = 0; // set to 0
+               // set all entry in current to unused
+               for (int i = 0; i< DIRENTRYCOUNT;++i)
+               {
+                  currentParent->dir.entrylist[i].unused = TRUE;
+               }
+            }
+         }
       }
-      currentParent = &virtualDisk[currentParent->entrylist[dirIndex].firstblock = rootDirIndex + i].dir;
-      pathCopy = rest;
+      token = strtok_r(NULL, "/", &rest);
    }
 }
 

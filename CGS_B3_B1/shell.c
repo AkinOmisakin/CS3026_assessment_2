@@ -7,52 +7,28 @@ int main()
 {
     // test format
     format();
-    // call print block
-    printBlock(0);
-    /* commented out for C3_C1 writedisk("virtualdiskD3_D1");*/
-    // create testfile.txt in virtualDisk in read mode
-    mymkdir("/firstfir/seconddir");
-    MyFILE * ptr_file = myfopen("testfile.txt", "w");
-    if (ptr_file == NULL)
-    {
-      printf("FILE NOT OPENED");
-      return 0;
-    }
-    // test myfputc
-    /*char arraytext[4*BLOCKSIZE]; // text size set: 4 * BLOCKSIZE = 4096
-    const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // alphabet text
-    // fill array with chars randomly from alphabet
-    for (int i=0; i < sizeof(arraytext); ++i)
-    {
-      arraytext[i] = alphabet[rand() % 26];
-    }
-    // when full
-    // fill file with text contents
-    printf("%d\n", ptr_file->blockno);
-    for (int i=0; i < sizeof(arraytext);++i)
-    {
-      myfputc(arraytext[i], ptr_file);
-    }
-    //test myfclose
-    myfclose(ptr_file);
-    //test myfgetc
-    // reopen file in read mode
-    ptr_file = myfopen("testfile.txt", "r");
-    // check file opened
-    if (ptr_file == NULL)
-    {
-      printf("file not opened\n");
-      return 0;
-    }
-    //myfgetc(ptr_file);
-    //myfclose(ptr_file);
-    /* commented out of part B
-    writedisk("virtualdiskC3_C1"); 
-    */
-
+    char ** listdirs;
     //test mymkdir
-    writedisk("virtualdiskB3_B1_a");
+    mymkdir("/myfirstdir/myseconddir/mythirddir");
     // test mylistdir
+    listdirs = mylistdir("/myfirstdir/myseconddir");
+    for (int i = 0; i < DIRENTRYCOUNT; i++) {
+        if(strcmp(listdirs[i], "\0") != 0) {
+            printf("%s\n", listdirs[i]);
+        }
+    }
+    
+    writedisk("virtualdiskB3_B1_a");
+    // test mymkdir
+    mymkdir("/myfirstdir/myseconddir/testfile.txt");
+    
+    listdirs = mylistdir("/myfirstdir/myseconddir");
+    for (int i = 0; i < DIRENTRYCOUNT; i++) {
+        if(strcmp(listdirs[i], "\0") != 0) {
+            printf("%s\n", listdirs[i]);
+        }
+    }
+    
     writedisk("virtualdiskB3_B1_b");
     return 0 ;
 }
