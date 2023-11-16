@@ -85,6 +85,7 @@ void format ( )
     * use strcpy() to copy some text to it for test purposes
 	* write block 0 to virtual disk
 	*/
+
    diskblock_t block ; // block 0
    for(int i =0; i < BLOCKSIZE; ++i)
    {
@@ -95,19 +96,23 @@ void format ( )
 	/* prepare FAT table
 	 * write FAT blocks to virtual disk
 	 */
+
    // can only store 512 entries in each block
    // we need 2 blocks to hold FAT entries
    diskblock_t block_1;
    diskblock_t block_2;
+
    // all FAT entries are UNUSED
    for(int i = 0; i < BLOCKSIZE; ++i)
    {
       FAT[i] = UNUSED; // 1024 entries set to UNUSED
    }
+
    FAT[0] = ENDOFCHAIN; // block 0
    FAT[1] = 2; // fat block 1
    FAT[2] = ENDOFCHAIN; // fat block 2
    FAT[3] = ENDOFCHAIN; // root
+
    // 4-1023 entries == UNUSED
    for(int i=0;i<FATENTRYCOUNT; ++i)
    {
@@ -120,6 +125,7 @@ void format ( )
    // write fat to disk
    writeblock(&block_1,1);
    writeblock(&block_2,2);
+
 	 /* prepare root directory
 	  * write root directory block to virtual disk
 	  */
@@ -129,10 +135,16 @@ void format ( )
    {
       root_Block.data[i] = '\0';
    }
+   // set all to unused
+   for (int i=0;i<DIRENTRYCOUNT;++i)
+   {
+      root_Block.dir.entrylist[i].unused = TRUE;
+   }
    //is a directory 
    root_Block.dir.isdir = TRUE;
    root_Block.dir.nextEntry = 0; // starts at 0
    rootDirIndex = 3;
+   currentDirIndex = 3;
    // write root to block
    writeblock(&root_Block, 3);
 }
@@ -147,18 +159,14 @@ MyFILE * myfopen ( const char * filename, const char * mode )
       printf("file not opened in the appropriate mode\n");
       return NULL; // return nothing
    }
-   dirblock_t *root = &virtualDisk[3].dir; // only use root to find existing file
+   /*! only use root to find existing file !*/
+   dirblock_t *root = &virtualDisk[rootDirIndex].dir; 
    // allocate memory to myFILE pointeer
    MyFILE * file_ptr = (MyFILE*) malloc(sizeof(MyFILE));
 
-   if (file_ptr == NULL)
-   {
-      return NULL;
-   }
-
    if (file_ptr == NULL) {
-   printf("Memory allocation failed.\n");
-   return NULL;
+      printf("Memory allocation failed.\n");
+      return NULL;
    }
    // initialise the MyFILE file data block
    // set mode value first
@@ -167,22 +175,22 @@ MyFILE * myfopen ( const char * filename, const char * mode )
    // if mode set to wtite
    if (strcmp("w", mode) == 0)
    {
-      // get dir entry 
+      // get dir entry from root dir
       int dirIndex = findfilebyname(root, filename);
+
       //check file can be found in disk
       if (dirIndex == EOF)
       {
          // if entry name not found create start creating the file
          printf("Creating File...\n");
       }
-      else
+
+      else // get exsiting file if name is found
       {
-         // get exsiting file if name is found
-         file_ptr->blockno = virtualDisk[3].dir.entrylist[dirIndex].firstblock;
-         file_ptr->pos = 0;
+         
+         file_ptr->blockno = virtualDisk[rootDirIndex].dir.entrylist[dirIndex].firstblock;
          file_ptr->buffer = virtualDisk[file_ptr->blockno];
-         file_ptr->buffer.dir.entrylist[0] = virtualDisk[3].dir.entrylist[dirIndex];
-         // return 
+         //file_ptr->buffer.dir.entrylist[0] = virtualDisk[rootDirIndex].dir.entrylist[dirIndex];
          return file_ptr;
       }
       
@@ -191,36 +199,36 @@ MyFILE * myfopen ( const char * filename, const char * mode )
 
       //set blokno to founs index
       file_ptr->blockno = UNUSED_fatentry; // is still FAT[file_ptr->blockno] = UNUSED
-
       // set position
       file_ptr->pos = 0;
-
-      //set memory start location to 0
-      memset(file_ptr->buffer.data,0,BLOCKSIZE);
-
-      // initialise entry
+      
+      /* initialise entry
       strncpy(file_ptr->buffer.dir.entrylist[0].name, filename, MAXNAME); //set name 
-      file_ptr->buffer.dir.entrylist[0].firstblock = file_ptr->blockno; // set firstblock
-      file_ptr->buffer.dir.entrylist[0].isdir = FALSE; // is a file
-      file_ptr->buffer.dir.entrylist[0].entrylength = 0;// entry length is 0
-      file_ptr->buffer.dir.entrylist[0].filelength = 0;// nothing in file so length 0
+      file_ptr->buffer.dir.entrylist[0].firstblock = file_ptr->blockno; 
+      file_ptr->buffer.dir.entrylist[0].isdir = FALSE; 
+      file_ptr->buffer.dir.entrylist[0].entrylength = 0;
+      file_ptr->buffer.dir.entrylist[0].filelength = 0;
       file_ptr->buffer.dir.entrylist[0].modtime = 0; // time set to 0
-      file_ptr->buffer.dir.entrylist[0].unused = FALSE;// set to used
-      //get unused directory
+      file_ptr->buffer.dir.entrylist[0].unused = FALSE;
+      */
+
+      //get unused directory in root
       dirIndex = findUNUSEDdirentry(root);
       if (dirIndex == EOF)
       {
          printf("All entry used up in directory");
          return NULL;
       }
+      // add unused dir entry to root
+      virtualDisk[rootDirIndex].dir.entrylist[dirIndex].entrylength = 0;// entry length is 0 currently
+      virtualDisk[rootDirIndex].dir.entrylist[dirIndex].filelength = 0;// nothing in file so length 0
+      virtualDisk[rootDirIndex].dir.entrylist[dirIndex].isdir = FALSE ;// is a file
+      virtualDisk[rootDirIndex].dir.entrylist[dirIndex].unused = FALSE;// set to used
+      virtualDisk[rootDirIndex].dir.entrylist[dirIndex].firstblock = file_ptr->blockno;// set firstblock
+      //virtualDisk[rootDirIndex].dir.entrylist[dirIndex] = file_ptr->buffer.dir.entrylist[0]; // set root dir nextEntry to entry above
+      strncpy(virtualDisk[rootDirIndex].dir.entrylist[dirIndex].name, filename, MAXNAME); // set name 
 
-      virtualDisk[3].dir.entrylist[dirIndex] = file_ptr->buffer.dir.entrylist[0]; // set root dir nextEntry to entry above
-
-      //file_ptr->buffer.dir.nextEntry = virtualDisk[3].dir.nextEntry; // save current entry location
-
-      strncpy(virtualDisk[3].dir.entrylist[dirIndex].name, filename, MAXNAME); // set name again
-
-      //virtualDisk[3].dir.nextEntry++; // increment next entry
+      virtualDisk[rootDirIndex].dir.nextEntry++;
 
       addfatentry(file_ptr->blockno);// add to fat block and FAT table
    }
@@ -237,17 +245,16 @@ MyFILE * myfopen ( const char * filename, const char * mode )
          return NULL;
       }
       // get exsiting file
-      file_ptr->blockno = virtualDisk[3].dir.entrylist[dirIndex].firstblock;
-      file_ptr->pos = 0;
+      file_ptr->blockno = virtualDisk[rootDirIndex].dir.entrylist[dirIndex].firstblock;
       file_ptr->buffer = virtualDisk[file_ptr->blockno];
-      file_ptr->buffer.dir.entrylist[0] = virtualDisk[3].dir.entrylist[dirIndex];
-      // return 
+      //file_ptr->buffer.dir.entrylist[0] = virtualDisk[3].dir.entrylist[dirIndex];
       return file_ptr;
    }
 
-   //message to tell file was made
+   // mode message
    printf("File opened in '%c' mode\n",*file_ptr->mode);
-   //return file pointer
+
+   //return file pointer that what created in write mode
    return file_ptr;
 }
 
@@ -260,7 +267,7 @@ int findfilebyname (dirblock_t * current ,const char* filename)
       //checks if filename exists then returns the index of the file
       if (strcmp(current->entrylist[i].name, filename) == 0)
       {
-         printf("file found at index %d\n", i);
+         //printf("file found at index %d\n", i);
          return i;
       }
    }
@@ -276,7 +283,7 @@ int findUNUSEDdirentry (dirblock_t *dir)
    {
       if (dir->entrylist[i].unused = TRUE && dir->entrylist[i].entrylength == 0)
       {
-         printf("file found at index %d\n", i);
+         //printf("file found at index %d\n", i);
          return i;
       }
    }
@@ -294,7 +301,7 @@ void addfatentry (int blokno)
       printf("block no is outside range of fat table\n"); // blokno outside FAT table range
    }
    // from 4 to 511 add to block 1
-   if ( blokno < 512)
+   if ( blokno < 511)
    {  
       FAT[blokno] = ENDOFCHAIN;
       virtualDisk[1].fat[blokno] = ENDOFCHAIN; 
@@ -316,10 +323,10 @@ void addtofatentry (int blokno, int newblokno)
    // checks within range
    if (blokno > 1024)
    {
-      printf("block no is too big");
+      printf("block no is outside range of fat table\n"); // blokno outside FAT table range
    }
    //checks less than 512 add block 1
-   if (blokno < 512)
+   if (blokno < 511)
    {
       FAT[blokno] = newblokno;
       virtualDisk[1].fat[blokno] = newblokno;
@@ -351,30 +358,9 @@ int findUNUSEDfatentry ()
  */
 void myfclose ( MyFILE * stream )
 {
-   //get file dir index;
-
-   int dirIndex = findfilebyname(&virtualDisk[3].dir, stream->buffer.dir.entrylist[0].name);//stream->buffer.dir.nextEntry;
-   if (dirIndex == NULL && dirIndex != 0)
-   {
-      printf("FileNotFoundError");
-      return NULL;
-   }
-   //checks dir index is large enough
-   if (dirIndex >=0)
-   {
-      // save filelength and entrylength
-      virtualDisk[3].dir.entrylist[dirIndex].filelength += stream->buffer.dir.entrylist[0].filelength+stream->pos;
-      virtualDisk[3].dir.entrylist[dirIndex].entrylength = (Byte) stream->buffer.dir.entrylist[0].entrylength;
-      stream->pos = 0;
-      printf("file closed\n");
-      // free file pointer
-      free(stream);
-   }
-   else 
-   {
-      printf("could not find dir Index");
-   }
-   
+   writeblock(&stream->buffer, stream->blockno);
+   free(stream);
+   printf("file is now closed");
 }
 
 /*  myfgetc function
@@ -434,12 +420,15 @@ void myfputc ( int b, MyFILE * stream )
       //output error if not in "w" mode
       printf("MyFILE mode not set to 'w' mode \n");
    }
+   // creat new block to write on 
+   diskblock_t *current = &stream->buffer;
+
    // checks if the pos is >= to 1023 
    if (stream->pos == BLOCKSIZE - 1 ) 
    {
       printf("buffer is full\n");
       // write buffer to if buffer is full to current block number location
-      writeblock(&stream->buffer, stream->blockno);
+      writeblock(current, stream->blockno);
 
       // get UNUSED fat entry
       int newfatentry = findUNUSEDfatentry();
@@ -450,20 +439,19 @@ void myfputc ( int b, MyFILE * stream )
          // if returned EOC ouput error 
          printf("There are no more fat entries left\n");
       }
+
       //add new entry to the fat block
       addfatentry(newfatentry);// new fat entry = EOC
 
       // add new entry to the end of firstblock
       addtofatentry(stream->blockno, newfatentry);
 
-
       stream->blockno = newfatentry;// set new blokno to new fat entry found
       stream->pos = 0; //reset position to 0
       memset(stream->buffer.data, 0, BLOCKSIZE); // reset memory location to 0
    }
-   
    // add the data b to the buffer data at the current pos of stream(file)
-   stream->buffer.data[stream->pos] = (Byte)b;
+   current->data[stream->pos] = (Byte) b;
    stream->pos++;//increase pos
 }
 
