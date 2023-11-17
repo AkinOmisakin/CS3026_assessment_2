@@ -509,26 +509,33 @@ void mymkdir ( const char * path )
             }
             else
             {
-               printf("Creating directory...\n");
-               // initialise the next level directory
-               currentParent->dir.entrylist[dirIndex].firstblock = fatIndex; // set firstblock to found entry
-               currentParent->dir.entrylist[dirIndex].isdir = TRUE; // is dir
-               currentParent->dir.entrylist[dirIndex].unused = FALSE;// used
-               strncpy(currentParent->dir.entrylist[dirIndex].name, token, MAXNAME); // set name
-               writeblock(currentParent, currentDirIndex); // write the current parent block
-
-               addfatentry(fatIndex); // add entry to fat table
-               currentDirIndex = fatIndex; // update current Index
-               currentParent = &virtualDisk[currentDirIndex]; // give it a block
-               currentParent->dir.isdir = TRUE; // new block is dir
-               currentParent->dir.nextEntry = 0; // set to 0
-
-               // set all entry in current to unused
-               for (int i = 0; i< DIRENTRYCOUNT;++i)
+               if ( path[0] == '/')
                {
-                  currentParent->dir.entrylist[i].unused = TRUE;
+                  printf("Creating directory...\n");
+                  // initialise the next level directory
+                  currentParent->dir.entrylist[dirIndex].firstblock = fatIndex; // set firstblock to found entry
+                  currentParent->dir.entrylist[dirIndex].isdir = TRUE; // is dir
+                  currentParent->dir.entrylist[dirIndex].unused = FALSE;// used
+                  strncpy(currentParent->dir.entrylist[dirIndex].name, token, MAXNAME); // set name
+                  writeblock(currentParent, currentDirIndex); // write the current parent block
+
+                  addfatentry(fatIndex); // add entry to fat table
+                  currentDirIndex = fatIndex; // update current Index
+                  currentParent = &virtualDisk[currentDirIndex]; // give it a block
+                  currentParent->dir.isdir = TRUE; // new block is dir
+                  currentParent->dir.nextEntry = 0; // set to 0
+
+                  // set all entry in current to unused
+                  for (int i = 0; i< DIRENTRYCOUNT;++i)
+                  {
+                     currentParent->dir.entrylist[i].unused = TRUE;
+                  }
+                  writeblock(currentParent, currentDirIndex);
                }
-               writeblock(currentParent, currentDirIndex);
+               else
+               {
+                  printf("Directory was relative, could not create directory");
+               }
             }
          }
       }

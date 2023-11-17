@@ -10,7 +10,9 @@ int main()
     // declare pointer to pointers
     char ** listdirs;
     //test mymkdir
-    mymkdir("/myfirstdir/myseconddir/mythirddir");
+    mymkdir("/firstdir/seconddir");
+    MyFILE * ptr_file = myfopen("/firstdir/seconddir/testfile1.txt","w");
+    myfclose(ptr_file);
     // test mylistdir
     listdirs = mylistdir("/myfirstdir/myseconddir");
     for (int i = 0; i < DIRENTRYCOUNT; i++) 
@@ -20,24 +22,8 @@ int main()
             printf("%s\n", listdirs[i]);
         }
     }
+    // change directory here --->
     
-    writedisk("virtualdiskB3_B1_a");
-
-    // test myfopen in path
-    MyFILE * ptr_file = myfopen("/myfirstdir/myseconddir/testfile1.txt", "w");
-    //test mylistdir
-    listdirs = mylistdir("/myfirstdir/myseconddir");
-    /* IN THE OUTPUT THIS LISTS THE mythirddir and testfile.txt */
-    for (int i = 0; i < DIRENTRYCOUNT; i++) 
-    {
-        if(strcmp(listdirs[i], "\0") != 0) 
-        {
-            printf("%s\n", listdirs[i]);
-        }
-    }
-    
-
-    myfclose(ptr_file);
-    writedisk("virtualdiskB3_B1_b");
+    writedisk("virtualdiskA5_A1_a");
     return 0 ;
 }

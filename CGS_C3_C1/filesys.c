@@ -202,15 +202,6 @@ MyFILE * myfopen ( const char * filename, const char * mode )
       // set position
       file_ptr->pos = 0;
       
-      /* initialise entry
-      strncpy(file_ptr->buffer.dir.entrylist[0].name, filename, MAXNAME); //set name 
-      file_ptr->buffer.dir.entrylist[0].firstblock = file_ptr->blockno; 
-      file_ptr->buffer.dir.entrylist[0].isdir = FALSE; 
-      file_ptr->buffer.dir.entrylist[0].entrylength = 0;
-      file_ptr->buffer.dir.entrylist[0].filelength = 0;
-      file_ptr->buffer.dir.entrylist[0].modtime = 0; // time set to 0
-      file_ptr->buffer.dir.entrylist[0].unused = FALSE;
-      */
 
       //get unused directory in root
       dirIndex = findUNUSEDdirentry(root);
@@ -247,7 +238,9 @@ MyFILE * myfopen ( const char * filename, const char * mode )
       // get exsiting file
       file_ptr->blockno = virtualDisk[rootDirIndex].dir.entrylist[dirIndex].firstblock;
       file_ptr->buffer = virtualDisk[file_ptr->blockno];
-      //file_ptr->buffer.dir.entrylist[0] = virtualDisk[3].dir.entrylist[dirIndex];
+      file_ptr->pos = 0;
+      // mode message
+      printf("File opened in '%c' mode\n",*file_ptr->mode);
       return file_ptr;
    }
 
@@ -373,41 +366,24 @@ int myfgetc ( MyFILE * stream )
       printf("MyFILE mode not set to 'r' mode\n");
       return EOF;
    }
-
-   // get block number
-   int nextblock = stream->blockno;
-   // array to store text
-   const char text[4*BLOCKSIZE];
-   // while there is a next block in chain
-   while (nextblock != ENDOFCHAIN)
+   int character;
+   //stream->buffer = virtualDisk[stream->blockno]; // get buffer of current block
+   character = stream->buffer.data[stream->pos]; // get each character of the buffer
+   stream->pos++; // pos++
+   if (stream->pos == BLOCKSIZE - 1)
    {
-      // print the block
-      printBlock(nextblock);
-      // traverse to next block in chain
-      nextblock = FAT[nextblock];
+      //print the current block to terminal
+      printBlock(stream->blockno);
+      // if eoc is reached then return eof
+      if (FAT[stream->blockno] == ENDOFCHAIN)
+      {
+         return EOF;
+      }
+      // traverse block chain
+      stream->blockno = FAT[stream->blockno];
+      stream->pos = 0; // reset pos
    }
-   // repeats the same process
-   nextblock = stream->blockno;
-   // copies data from buffer to text above
-   strcpy(text, virtualDisk[stream->blockno].data);
-   //traverse FAT chain
-   while(FAT[nextblock] != ENDOFCHAIN)
-   {
-      nextblock = FAT[nextblock];
-      // add to text the next block data
-      strcat(text,virtualDisk[nextblock].data);
-   }
-   //create copy file
-   FILE* realfile = fopen("testfileC3_C1_copy.txt","w");
-   //check file is opened
-   if (realfile == NULL)
-    {
-        printf("NOt able to open file");
-        return 0;
-    }
-   // writes text file to copy file
-   fprintf(realfile, text);
-   fclose(realfile);
+   return character;
 }
 
 /*  myfputc function
@@ -457,65 +433,7 @@ void myfputc ( int b, MyFILE * stream )
 
 /*  mymkdir function
  */
-void mymkdir ( const char * path )
-{
-   char *token, *rest; // tokenize path and save pointer
-   char *pathCopy = strdup(path); // copy path
-   diskblock_t *currentParent = &virtualDisk[rootDirIndex]; // root original parent direcotry
-   currentDirIndex = rootDirIndex;//get root block index
-   token = strtok_r(pathCopy, "/", &rest); // tokenize path
-   //search each directory in path, if they don't exist create the directory in the path
-   while (token != NULL)
-   {
-      // find directory index in current directory
-      int dirIndex = findfilebyname(&currentParent->dir, token);
-      // if found
-      if (dirIndex != EOF) // return an index
-      {
-         // update the current parent to next dir
-         currentDirIndex = currentParent->dir.entrylist[dirIndex].firstblock; // get fat index 
-         currentParent = &virtualDisk[currentDirIndex]; // update currentparent
-      }
-      else // the index was not found
-      {
-         // then we have to create that directory inside currentParent
-         dirIndex = findUNUSEDdirentry(&currentParent->dir); // find unused dir in current parent
-         if (dirIndex  == EOF)
-         {
-            printf("All entries used up! \n");
-         }
-         else 
-         {
-            int fatIndex = findUNUSEDfatentry(); // find an unused fat entry
-            if (fatIndex == ENDOFCHAIN) // end not found
-            {
-               printf("FAT table is full!\n");
-            }
-            else
-            {
-               // initialise the next level directory
-               currentParent->dir.entrylist[dirIndex].firstblock = fatIndex; // set firstblock to found entry
-               currentParent->dir.entrylist[dirIndex].isdir = TRUE; // is dir
-               currentParent->dir.entrylist[dirIndex].unused = FALSE;// used
-               strncpy(currentParent->dir.entrylist[dirIndex].name, token, MAXNAME); // set name
-               addfatentry(fatIndex); // add entry to fat table
-               writeblock(currentParent, currentDirIndex); // write the current parent block
-               currentDirIndex = fatIndex; // update current Index
-               currentParent = &virtualDisk[currentDirIndex]; // give it a block
-               currentParent->dir.isdir = TRUE; // new block is dir
-               currentParent->dir.nextEntry = 0; // set to 0
-               // set all entry in current to unused
-               for (int i = 0; i< DIRENTRYCOUNT;++i)
-               {
-                  currentParent->dir.entrylist[i].unused = TRUE;
-               }
-            }
-         }
-      }
-      token = strtok_r(NULL, "/", &rest);
-   }
-}
-
+void mymkdir ( const char * path ) ;
 
 /*  myfputc function
  */
