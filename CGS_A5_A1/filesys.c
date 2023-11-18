@@ -116,11 +116,11 @@ void format ( )
    // 4-1023 entries == UNUSED
    for(int i=0;i<FATENTRYCOUNT; ++i)
    {
-      block_1.fat[i] = FAT[i]; // fatblock 0 -> 512 stores FAT 0 -> 512 entries
+      block_1.fat[i] = FAT[i]; // fatblock 0 -> 511 stores FAT 0 -> 511 entries
    }
    for (int i = FATENTRYCOUNT; i < BLOCKSIZE; ++i)
    {
-      block_2.fat[i-512] = FAT[i]; //fatblock 0 -> 512 stores FAT 512 -> 1023 entries
+      block_2.fat[i-512] = FAT[i]; //fatblock 0 -> 511 stores FAT 512 -> 1023 entries
    }
    // write fat to disk
    writeblock(&block_1,1);
@@ -173,7 +173,7 @@ MyFILE * myfopen ( const char * filename, const char * mode )
       
       newpath[newlength] = '\0';
 
-      mymkdir(newpath); // call mymkdir to make the directories or get the currentDirIndex
+      mymkdir(newpath); // call mymkdir to make the directories and get the currentDirIndex
 
       filename = lastSlash + 1;  // this will be the name of the file only
    }
@@ -196,7 +196,7 @@ MyFILE * myfopen ( const char * filename, const char * mode )
    // if mode set to wtite
    if (strcmp("w", mode) == 0)
    {
-      // get dir entry from current dir
+      /*  Search for the existing file in the current dir */
       int dirIndex = findfilebyname(&currentParent->dir, filename);
 
       //check file can be found in disk
@@ -239,7 +239,7 @@ MyFILE * myfopen ( const char * filename, const char * mode )
       currentParent->dir.entrylist[dirIndex].firstblock = file_ptr->blockno;// set firstblock
       strncpy(currentParent->dir.entrylist[dirIndex].name, filename, MAXNAME); // set name 
 
-      //currentParent->dir.nextEntry++;
+      currentParent->dir.nextEntry++;
 
       writeblock(currentParent, currentDirIndex);
 
@@ -388,41 +388,24 @@ int myfgetc ( MyFILE * stream )
       printf("MyFILE mode not set to 'r' mode\n");
       return EOF;
    }
-
-   // get block number
-   int nextblock = stream->blockno;
-   // array to store text
-   const char text[4*BLOCKSIZE];
-   // while there is a next block in chain
-   while (nextblock != ENDOFCHAIN)
+   int character;
+   //stream->buffer = virtualDisk[stream->blockno]; // get buffer of current block
+   character = stream->buffer.data[stream->pos]; // get each character of the buffer
+   stream->pos++; // pos++
+   if (stream->pos == BLOCKSIZE - 1)
    {
-      // print the block
-      printBlock(nextblock);
-      // traverse to next block in chain
-      nextblock = FAT[nextblock];
+      //print the current block to terminal
+      printBlock(stream->blockno);
+      // if eoc is reached then return eof
+      if (FAT[stream->blockno] == ENDOFCHAIN)
+      {
+         return EOF;
+      }
+      // traverse block chain
+      stream->blockno = FAT[stream->blockno];
+      stream->pos = 0; // reset pos
    }
-   // repeats the same process
-   nextblock = stream->blockno;
-   // copies data from buffer to text above
-   strcpy(text, virtualDisk[stream->blockno].data);
-   //traverse FAT chain
-   while(FAT[nextblock] != ENDOFCHAIN)
-   {
-      nextblock = FAT[nextblock];
-      // add to text the next block data
-      strcat(text,virtualDisk[nextblock].data);
-   }
-   //create copy file
-   FILE* realfile = fopen("testfileC3_C1_copy.txt","w");
-   //check file is opened
-   if (realfile == NULL)
-    {
-        printf("NOt able to open file");
-        return 0;
-    }
-   // writes text file to copy file
-   fprintf(realfile, text);
-   fclose(realfile);
+   return character;
 }
 
 /*  myfputc function
@@ -477,7 +460,7 @@ void mymkdir ( const char * path )
    char *token, *rest; // tokenize path and save pointer
    char *pathCopy = strdup(path); // copy path
    diskblock_t *currentParent = &virtualDisk[rootDirIndex]; // root original parent direcotry
-   currentDirIndex = rootDirIndex;//get root block index
+   
    token = strtok_r(pathCopy, "/", &rest); // tokenize path
    //search each directory in path, if they don't exist create the directory in the path
    while (token != NULL)
@@ -509,7 +492,7 @@ void mymkdir ( const char * path )
             }
             else
             {
-               if ( path[0] == '/')
+               if (path[0] == '/')
                {
                   printf("Creating directory...\n");
                   // initialise the next level directory
@@ -550,7 +533,7 @@ char ** mylistdir (const char * path)
    char *token, *rest; // tokenize path and save pointer
    char *pathCopy = strdup(path); // copy path
    diskblock_t *currentParent = &virtualDisk[rootDirIndex]; // root original parent direcotry
-   currentDirIndex = rootDirIndex;//get root block index
+   //currentDirIndex = rootDirIndex;//get root block index
 
    char ** CharList; // declare ** char pointer which is a list of pointers
 
@@ -563,6 +546,24 @@ char ** mylistdir (const char * path)
    }
 
    token = strtok_r(pathCopy, "/", &rest);// tokenize path
+
+   // ------------- Code Changed ----------------- ||
+   // first check that path is self referenced
+   if (strcmp(path , ".") == 0)
+   {
+      // the current block using currentDirIndex
+      currentParent = &virtualDisk[currentDirIndex]; 
+      for (int i = 0; i < DIRENTRYCOUNT; i++) 
+      {  
+         // allocate memory to each pointer in the list
+         CharList[i] = malloc(sizeof(char)*MAXNAME);
+         // set the name of each entry (i) in the current parent (entrylist) into the list at index i
+         strcpy(CharList[i], currentParent->dir.entrylist[i].name);
+      }
+      return CharList; // return List 
+   }
+   // -------------------------------------------- ||
+
    // if token found
    while (token != NULL)
    {
@@ -588,13 +589,59 @@ char ** mylistdir (const char * path)
       }
       token = strtok_r(NULL, "/", &rest); // return NULL if there are no more tokens
    }
+   free(pathCopy);
    return CharList; // return list
 }
 
 
-/*  myfputc function
+/*  myrmdir function
  */
 void myrmdir ( const char * path );
+
+/*  myremove function
+ */
+void myremove( const char * path) 
+{
+   // This function removes a file; the path can be absolute or relative
+   char *token, *rest; // tokenize path and save pointer
+   char *pathCopy = strdup(path); // copy path
+   diskblock_t *currentParent = &virtualDisk[rootDirIndex]; // root original parent direcotry
+   
+   // seperate filename from dir path 
+}
+
+/*  mychdir function
+ */
+void mychdir( const char * path) 
+{
+   //currentDir = strdup(path); 
+   char *token, *rest; // tokenize path and save pointer
+   char *pathCopy = strdup(path); // copy path
+   diskblock_t *currentParent = &virtualDisk[rootDirIndex]; // root original parent direcotry
+   
+   token = strtok_r(pathCopy, "/", &rest); // tokenize path
+   while (token != NULL)
+   {
+      int dirIndex = findfilebyname(&currentParent->dir, token); // find directory by name
+      currentDir = &currentParent->dir.entrylist[dirIndex]; // change into path directory !!
+      if (currentDir != EOF)
+      {
+         currentDirIndex = currentDir->firstblock;
+         currentParent = &virtualDisk[currentDirIndex];
+      }
+      else
+      {
+         printf("Path Not found\n");
+         /* option to create path if cant find it ( NOT IN USE )
+         printf("Creating Path ... \n");
+         mymkdir(currentDir);
+         */
+      }
+      token = strtok_r(NULL, "/",&rest);
+   }
+   free(pathCopy);
+   printf("Current Directory index is now =  %d \n", currentDirIndex);
+}
 
 /* use this for testing
  */

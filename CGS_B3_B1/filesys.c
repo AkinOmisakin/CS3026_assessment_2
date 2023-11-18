@@ -388,41 +388,24 @@ int myfgetc ( MyFILE * stream )
       printf("MyFILE mode not set to 'r' mode\n");
       return EOF;
    }
-
-   // get block number
-   int nextblock = stream->blockno;
-   // array to store text
-   const char text[4*BLOCKSIZE];
-   // while there is a next block in chain
-   while (nextblock != ENDOFCHAIN)
+   int character;
+   //stream->buffer = virtualDisk[stream->blockno]; // get buffer of current block
+   character = stream->buffer.data[stream->pos]; // get each character of the buffer
+   stream->pos++; // pos++
+   if (stream->pos == BLOCKSIZE - 1)
    {
-      // print the block
-      printBlock(nextblock);
-      // traverse to next block in chain
-      nextblock = FAT[nextblock];
+      //print the current block to terminal
+      printBlock(stream->blockno);
+      // if eoc is reached then return eof
+      if (FAT[stream->blockno] == ENDOFCHAIN)
+      {
+         return EOF;
+      }
+      // traverse block chain
+      stream->blockno = FAT[stream->blockno];
+      stream->pos = 0; // reset pos
    }
-   // repeats the same process
-   nextblock = stream->blockno;
-   // copies data from buffer to text above
-   strcpy(text, virtualDisk[stream->blockno].data);
-   //traverse FAT chain
-   while(FAT[nextblock] != ENDOFCHAIN)
-   {
-      nextblock = FAT[nextblock];
-      // add to text the next block data
-      strcat(text,virtualDisk[nextblock].data);
-   }
-   //create copy file
-   FILE* realfile = fopen("testfileC3_C1_copy.txt","w");
-   //check file is opened
-   if (realfile == NULL)
-    {
-        printf("NOt able to open file");
-        return 0;
-    }
-   // writes text file to copy file
-   fprintf(realfile, text);
-   fclose(realfile);
+   return character;
 }
 
 /*  myfputc function
