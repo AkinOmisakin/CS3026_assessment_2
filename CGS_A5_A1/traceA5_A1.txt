@@ -1,0 +1,52 @@
+gcc -Wall -Wextra -c -o filesys.o filesys.c
+gcc -Wall -Wextra -c -o shell.o shell.c
+gcc -Wall -Wextra -o FAT filesys.o shell.o
+./FAT
+Creating directory...
+Creating directory...
+Creating File...
+File opened in 'w' mode
+File opened in Directory index  =  5 
+file is now closed
+Path contents ... 
+Current Directory index is now =  5 
+testfile1.txt
+Current Directory index is now =  5 
+Path contents ... 
+testfile1.txt
+Creating File...
+File opened in 'w' mode
+File opened in Directory index  =  5 
+file is now closed
+Path contents ... 
+testfile1.txt
+testfile2.txt
+Creating directory...
+Creating File...
+File opened in 'w' mode
+File opened in Directory index  =  8 
+file is now closed
+Path contents ... 
+testfile3.txt
+writedisk> virtualdisk[0] = CS3026 Operating Systems Assessment 2023
+Current Directory index is now =  5 
+Path contents ... 
+testfile1.txt
+testfile2.txt
+File is now deleted!
+File is now deleted!
+Path contents ... 
+writedisk> virtualdisk[0] = CS3026 Operating Systems Assessment 2023
+Current Directory index is now =  8 
+File is now deleted!
+writedisk> virtualdisk[0] = CS3026 Operating Systems Assessment 2023
+Current Directory index is now =  3 
+deleted
+Path contents ... 
+Current Directory index is now =  4 
+deleted
+Path contents ... 
+Current Directory index is now =  3 
+deleted
+Path contents ... 
+writedisk> virtualdisk[0] = CS3026 Operating Systems Assessment 2023

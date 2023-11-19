@@ -160,12 +160,12 @@ MyFILE * myfopen ( const char * filename, const char * mode )
       return NULL; // return nothing
    }
    // ----------------------------------------------------------------------- start
-   
+   //currentDirIndex = rootDirIndex;
    /* seperate the directory from the file name*/
    char * lastSlash = strrchr(filename, '/');
    if (lastSlash != NULL)
    {
-      size_t newlength = lastSlash - filename; // the size of dir path
+      size_t newlength = lastSlash - filename ; // the size of dir path
 
       char newpath[newlength]; // create string
 
@@ -177,7 +177,6 @@ MyFILE * myfopen ( const char * filename, const char * mode )
 
       filename = lastSlash + 1;  // this will be the name of the file only
    }
-   
    // get block of current dir 
    diskblock_t * currentParent = &virtualDisk[currentDirIndex];
 
@@ -266,9 +265,9 @@ MyFILE * myfopen ( const char * filename, const char * mode )
       return file_ptr;
    }
 
-   // mode message
+   // messages
    printf("File opened in '%c' mode\n",*file_ptr->mode);
-
+   printf("File opened in Directory index  =  %d \n", currentDirIndex);
    //return file pointer that what created in write mode
    return file_ptr;
 }
@@ -460,7 +459,7 @@ void mymkdir ( const char * path )
    char *token, *rest; // tokenize path and save pointer
    char *pathCopy = strdup(path); // copy path
    diskblock_t *currentParent = &virtualDisk[rootDirIndex]; // root original parent direcotry
-   
+   currentDirIndex = rootDirIndex;//get root block index
    token = strtok_r(pathCopy, "/", &rest); // tokenize path
    //search each directory in path, if they don't exist create the directory in the path
    while (token != NULL)
@@ -492,7 +491,7 @@ void mymkdir ( const char * path )
             }
             else
             {
-               if (path[0] == '/')
+               if ( path[0] == '/')
                {
                   printf("Creating directory...\n");
                   // initialise the next level directory
@@ -532,25 +531,23 @@ char ** mylistdir (const char * path)
 {
    char *token, *rest; // tokenize path and save pointer
    char *pathCopy = strdup(path); // copy path
-   diskblock_t *currentParent = &virtualDisk[rootDirIndex]; // root original parent direcotry
-   //currentDirIndex = rootDirIndex;//get root block index
+   diskblock_t *currentParent; // root original parent direcotry
+
+   if (path[0] == '/')
+   {
+      currentParent = &virtualDisk[rootDirIndex];
+      currentDirIndex = rootDirIndex;
+   }
 
    char ** CharList; // declare ** char pointer which is a list of pointers
 
-   CharList = malloc(sizeof(char *) * DIRENTRYCOUNT) ; // allocate memory to it
-   // exception
-   if (CharList == NULL)
-   {
-      printf("memory not allocated\n");
-      return NULL;
-   }
-
-   token = strtok_r(pathCopy, "/", &rest);// tokenize path
-
+   CharList = (char**) malloc(sizeof(char *) * (DIRENTRYCOUNT+1)) ; // allocate memory to it
+   
    // ------------- Code Changed ----------------- ||
    // first check that path is self referenced
-   if (strcmp(path , ".") == 0)
+   if (path[0]== '.')
    {
+      
       // the current block using currentDirIndex
       currentParent = &virtualDisk[currentDirIndex]; 
       for (int i = 0; i < DIRENTRYCOUNT; i++) 
@@ -564,6 +561,8 @@ char ** mylistdir (const char * path)
    }
    // -------------------------------------------- ||
 
+
+   token = strtok_r(pathCopy, "/", &rest);// tokenize path
    // if token found
    while (token != NULL)
    {
@@ -575,13 +574,6 @@ char ** mylistdir (const char * path)
          // update the current parent to next dir
          currentDirIndex = currentParent->dir.entrylist[dirIndex].firstblock; // get fat index 
          currentParent = &virtualDisk[currentDirIndex]; // update currentparent
-         for (int i = 0; i < DIRENTRYCOUNT; i++) 
-         {  
-            // allocate memory to each pointer in the list
-            CharList[i] = malloc(sizeof(char)*MAXNAME);
-            // set the name of each entry (i) in the current parent (entrylist) into the list at index i
-            strcpy(CharList[i], currentParent->dir.entrylist[i].name);
-         }
       }
       else
       {
@@ -589,6 +581,15 @@ char ** mylistdir (const char * path)
       }
       token = strtok_r(NULL, "/", &rest); // return NULL if there are no more tokens
    }
+
+   for (int i = 0; i < DIRENTRYCOUNT; i++) 
+   {  
+      // allocate memory to each pointer in the list
+      CharList[i] = (char*) malloc(sizeof(char)*MAXNAME);
+      // set the name of each entry (i) in the current parent (entrylist) into the list at index i
+      strcpy(CharList[i], currentParent->dir.entrylist[i].name);
+   }
+   printf("Current Directory index is now =  %d \n", currentDirIndex);
    free(pathCopy);
    return CharList; // return list
 }
@@ -596,8 +597,65 @@ char ** mylistdir (const char * path)
 
 /*  myrmdir function
  */
-void myrmdir ( const char * path );
+void myrmdir ( const char * path )
+{
+   char *token, *rest; // tokenize path and save pointer
+   char *pathCopy = strdup(path); // copy path
+   diskblock_t *currentParent = &virtualDisk[currentDirIndex];
+   fatentry_t prevDirIndex = 0;
+   int dirIndex;
+   token = strtok_r(pathCopy, "/", &rest);
+   while (token != NULL)
+   {
+      dirIndex = findfilebyname(&currentParent->dir, token); // find directory by name
+      //currentDir = &currentParent->dir.entrylist[dirIndex]; // change into path directory !!
+      if (dirIndex != EOF)
+      {
+         prevDirIndex = currentDirIndex;
+         currentDirIndex = currentParent->dir.entrylist[dirIndex].firstblock;
+         currentParent = &virtualDisk[currentDirIndex];
+         dirIndex = dirIndex;
+      }
+      else
+      {
+         printf("Not found path \n");
+      }
+      token = strtok_r(NULL, "/",&rest);
+   }
+   diskblock_t * prevParent = &virtualDisk[prevDirIndex];
+   direntry_t p;
+   // for (int i =0; i< MAXNAME;++i) p.name[i] ='\0';
+   strncpy(p.name, "\0", MAXNAME);
+   prevParent->dir.entrylist[dirIndex] = p;
+   prevParent->dir.entrylist[dirIndex].unused = TRUE;
+   deletefat(currentDirIndex);
+   //writeblock(prevParent, prevDirIndex);
+   printf("deleted\n");
+}
 
+
+void deletefat (int blokno) 
+{
+   
+   //check if blokno size fits in block 1 or block 2
+   if (blokno > 1024)
+   {
+      printf("block no is outside range of fat table\n"); // blokno outside FAT table range
+   }
+   // from 4 to 511 remove from  block 1
+   if ( blokno < 512)
+   {  
+      FAT[blokno] = UNUSED;
+      virtualDisk[1].fat[blokno] = UNUSED;
+      
+   }
+   else 
+   {
+      // or from 512 - 1024 remove from block 2
+      FAT[blokno] = UNUSED;
+      virtualDisk[2].fat[blokno] = UNUSED; 
+   }
+}
 /*  myremove function
  */
 void myremove( const char * path) 
@@ -606,40 +664,149 @@ void myremove( const char * path)
    char *token, *rest; // tokenize path and save pointer
    char *pathCopy = strdup(path); // copy path
    diskblock_t *currentParent = &virtualDisk[rootDirIndex]; // root original parent direcotry
-   
-   // seperate filename from dir path 
+   //currentDirIndex = rootDirIndex;
+   // seperate filename from dir path
+   char * lastSlash = strrchr(path, '/');
+
+   if (lastSlash != NULL)
+   {
+      size_t newlength = lastSlash - path + 1; // the size of dir path
+
+      char newpath[newlength]; // create string
+
+      strncpy (newpath, path, newlength); // copy dir path into string
+      
+      newpath[newlength] = '\0';
+
+      pathCopy = strdup(newpath); // dir path copied
+
+      path = lastSlash + 1;  // this will be the name of the file only
+
+      mychdir(pathCopy); // change to directory
+      currentParent = &virtualDisk[currentDirIndex];
+      int dirIndex = findfilebyname(&currentParent->dir, path);
+      if (dirIndex != EOF)
+      {
+         if (currentParent->dir.entrylist[dirIndex].isdir == FALSE)
+         {
+            // un-initialise the file dir
+            currentParent->dir.entrylist[dirIndex].unused = TRUE;
+            currentParent->dir.entrylist[dirIndex].filelength = 0;
+            currentParent->dir.entrylist[dirIndex].entrylength = 0;
+            for (int i=0;i<MAXNAME;++i) currentParent->dir.entrylist[dirIndex].name[i] = '\0';
+            //strncpy(currentParent->dir.entrylist[dirIndex].name, "\0", MAXNAME);
+            // remove the file buffer(s) from the FAT table
+            int nextblock = currentParent->dir.entrylist[dirIndex].firstblock;
+            while (nextblock != ENDOFCHAIN)
+            {
+               // pointer instead of re writing to block
+               diskblock_t * buffer = &virtualDisk[nextblock];
+               for (int i = 0;i<BLOCKSIZE;++i)
+               {
+                  buffer->data[i] = '\0';
+               }
+               // save the number ---> go to next block ---> delete previous block number
+               int saveblkno = nextblock; nextblock = FAT[nextblock]; deletefat(nextblock);
+            }
+            currentParent->dir.entrylist[dirIndex].firstblock = UNUSED;
+            printf("File is now deleted!\n");
+            
+         }
+         else
+         {
+            printf("Can not delete a directory\n");
+         }
+      }
+      else
+      {
+         printf("FileNotFoundError!\n");
+      }
+   }
+   // if just the testfile name
+   currentParent = &virtualDisk[currentDirIndex];
+   int dirIndex = findfilebyname(&currentParent->dir, path);
+   if (dirIndex != EOF)
+   {
+         if (currentParent->dir.entrylist[dirIndex].isdir == FALSE)
+         {
+            // un-initialise the file dir
+            currentParent->dir.entrylist[dirIndex].unused = TRUE;
+            currentParent->dir.entrylist[dirIndex].filelength = 0;
+            currentParent->dir.entrylist[dirIndex].entrylength = 0;
+            for (int i=0;i<MAXNAME;++i) currentParent->dir.entrylist[dirIndex].name[i] = '\0';
+            //strncpy(currentParent->dir.entrylist[dirIndex].name, "\0", MAXNAME);
+            currentParent->dir.nextEntry = 0;
+            // remove the file buffer(s) from the FAT table
+            int nextblock = currentParent->dir.entrylist[dirIndex].firstblock;
+            while (nextblock != ENDOFCHAIN)
+            {
+               // pointer instead of re writing to block
+               diskblock_t* buffer = &virtualDisk[nextblock];
+               for (int i = 0;i<BLOCKSIZE;++i)
+               {
+                  buffer->data[i] = '\0';
+               }
+               // save the number ---> go to next block ---> delete previous block number
+               int saveblkno = nextblock; nextblock = FAT[nextblock]; deletefat(nextblock);
+            }
+            currentParent->dir.entrylist[dirIndex].firstblock = UNUSED;
+            printf("File is now deleted!\n");
+         }
+         else
+         {
+            printf("Can not delete a directory\n");
+         }
+   }
+      else
+      {
+         printf("FileNotFoundError!\n");
+      }
 }
 
-/*  mychdir function
+
+/*  mychdir function || mychdir("..") --> goes to previous dir || mychdir("/") --> goes to root
  */
 void mychdir( const char * path) 
 {
    //currentDir = strdup(path); 
    char *token, *rest; // tokenize path and save pointer
    char *pathCopy = strdup(path); // copy path
+
    diskblock_t *currentParent = &virtualDisk[rootDirIndex]; // root original parent direcotry
+   currentDirIndex = rootDirIndex;
+   int parentDirIndex = rootDirIndex; // parenntDirIndex = prev level Dir index 
+
+   if (path == '/')
+   {
+      currentDirIndex = rootDirIndex;
+      currentParent = &virtualDisk[currentDirIndex];
+   }
    
    token = strtok_r(pathCopy, "/", &rest); // tokenize path
+
    while (token != NULL)
    {
       int dirIndex = findfilebyname(&currentParent->dir, token); // find directory by name
-      currentDir = &currentParent->dir.entrylist[dirIndex]; // change into path directory !!
-      if (currentDir != EOF)
+      //currentDir = &currentParent->dir.entrylist[dirIndex]; // change into path directory !!
+      if (dirIndex != EOF)
       {
-         currentDirIndex = currentDir->firstblock;
+         parentDirIndex = currentDirIndex;
+         currentDirIndex = currentParent->dir.entrylist[dirIndex].firstblock;
          currentParent = &virtualDisk[currentDirIndex];
       }
       else
       {
-         printf("Path Not found\n");
-         /* option to create path if cant find it ( NOT IN USE )
-         printf("Creating Path ... \n");
-         mymkdir(currentDir);
-         */
+         printf("%s Not found in Path\n", token);
       }
       token = strtok_r(NULL, "/",&rest);
    }
-   free(pathCopy);
+   // if mychdir("..") --> cd .. 
+   if (path == "..")
+   {
+      // update current
+      currentDirIndex = parentDirIndex;
+   }
+
    printf("Current Directory index is now =  %d \n", currentDirIndex);
 }
 
