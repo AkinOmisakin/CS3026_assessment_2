@@ -159,7 +159,6 @@ MyFILE * myfopen ( const char * filename, const char * mode )
       printf("file not opened in the appropriate mode\n");
       return NULL; // return nothing
    }
-   // ----------------------------------------------------------------------- start
    
    /* seperate the directory from the file name*/
    char * lastSlash = strrchr(filename, '/');
@@ -388,6 +387,10 @@ int myfgetc ( MyFILE * stream )
       printf("MyFILE mode not set to 'r' mode\n");
       return EOF;
    }
+   else
+   {
+
+   
    int character;
    //stream->buffer = virtualDisk[stream->blockno]; // get buffer of current block
    character = stream->buffer.data[stream->pos]; // get each character of the buffer
@@ -406,6 +409,7 @@ int myfgetc ( MyFILE * stream )
       stream->pos = 0; // reset pos
    }
    return character;
+   }
 }
 
 /*  myfputc function
@@ -418,6 +422,10 @@ void myfputc ( int b, MyFILE * stream )
       //output error if not in "w" mode
       printf("MyFILE mode not set to 'w' mode \n");
    }
+   else
+   {
+
+   
    // creat new block to write on 
    diskblock_t *current = &stream->buffer;
 
@@ -451,6 +459,7 @@ void myfputc ( int b, MyFILE * stream )
    // add the data b to the buffer data at the current pos of stream(file)
    current->data[stream->pos] = (Byte) b;
    stream->pos++;//increase pos
+   }
 }
 
 /*  mymkdir function

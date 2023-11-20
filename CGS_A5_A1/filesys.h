@@ -120,6 +120,7 @@ int findUNUSEDfatentry () ;
 void addfatentry ( int blokno) ;
 void addtofatentry (int blokno , int newblokno) ;
 int findfilebyname (dirblock_t * current, const char * filename);
+void deletefat(int blokno);
 #endif
 
 /*

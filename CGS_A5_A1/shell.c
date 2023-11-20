@@ -144,7 +144,7 @@ int main()
         }
     }
     //change dir
-    mychdir("/"); 
+    mychdir(".."); // or mychdir("..")
     // delete dir
     myrmdir("firstdir");
     //test

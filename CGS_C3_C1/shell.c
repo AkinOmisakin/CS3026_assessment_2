@@ -40,12 +40,7 @@ int main()
       printf("file not opened\n");
       return 0;
     }
-    /*call myfgetc
-    if (myfgetc(ptr_file) == EOF)
-    {
-      return 0;
-    }
-    */
+
     // test myfgetc
     int character = myfgetc(ptr_file);
     FILE * realfile = fopen("testfileC3_C1_copy.txt", "w"); // open file to copy content

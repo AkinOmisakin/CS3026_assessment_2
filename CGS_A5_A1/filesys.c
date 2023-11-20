@@ -614,7 +614,6 @@ void myrmdir ( const char * path )
          prevDirIndex = currentDirIndex;
          currentDirIndex = currentParent->dir.entrylist[dirIndex].firstblock;
          currentParent = &virtualDisk[currentDirIndex];
-         dirIndex = dirIndex;
       }
       else
       {
@@ -624,13 +623,14 @@ void myrmdir ( const char * path )
    }
    diskblock_t * prevParent = &virtualDisk[prevDirIndex];
    direntry_t p;
-   // for (int i =0; i< MAXNAME;++i) p.name[i] ='\0';
-   strncpy(p.name, "\0", MAXNAME);
-   prevParent->dir.entrylist[dirIndex] = p;
-   prevParent->dir.entrylist[dirIndex].unused = TRUE;
-   deletefat(currentDirIndex);
-   //writeblock(prevParent, prevDirIndex);
-   printf("deleted\n");
+   if (dirIndex != EOF)
+   {
+      strncpy(p.name, "\0", MAXNAME);
+      prevParent->dir.entrylist[dirIndex] = p;
+      prevParent->dir.entrylist[dirIndex].unused = TRUE;
+      deletefat(currentDirIndex);
+      printf("deleted\n");
+   }
 }
 
 
@@ -693,8 +693,10 @@ void myremove( const char * path)
             currentParent->dir.entrylist[dirIndex].unused = TRUE;
             currentParent->dir.entrylist[dirIndex].filelength = 0;
             currentParent->dir.entrylist[dirIndex].entrylength = 0;
-            for (int i=0;i<MAXNAME;++i) currentParent->dir.entrylist[dirIndex].name[i] = '\0';
-            //strncpy(currentParent->dir.entrylist[dirIndex].name, "\0", MAXNAME);
+            for (int i=0;i<MAXNAME;++i) 
+            {
+               currentParent->dir.entrylist[dirIndex].name[i] = "\0"; //This can be used also
+            }
             // remove the file buffer(s) from the FAT table
             int nextblock = currentParent->dir.entrylist[dirIndex].firstblock;
             while (nextblock != ENDOFCHAIN)
@@ -706,7 +708,7 @@ void myremove( const char * path)
                   buffer->data[i] = '\0';
                }
                // save the number ---> go to next block ---> delete previous block number
-               int saveblkno = nextblock; nextblock = FAT[nextblock]; deletefat(nextblock);
+               int saveblkno = nextblock; nextblock = FAT[nextblock]; deletefat(saveblkno);
             }
             currentParent->dir.entrylist[dirIndex].firstblock = UNUSED;
             printf("File is now deleted!\n");
@@ -733,8 +735,10 @@ void myremove( const char * path)
             currentParent->dir.entrylist[dirIndex].unused = TRUE;
             currentParent->dir.entrylist[dirIndex].filelength = 0;
             currentParent->dir.entrylist[dirIndex].entrylength = 0;
-            for (int i=0;i<MAXNAME;++i) currentParent->dir.entrylist[dirIndex].name[i] = '\0';
-            //strncpy(currentParent->dir.entrylist[dirIndex].name, "\0", MAXNAME);
+            for (int i=0;i<MAXNAME;++i)
+            {
+               currentParent->dir.entrylist[dirIndex].name[i] = '\0';
+            } 
             currentParent->dir.nextEntry = 0;
             // remove the file buffer(s) from the FAT table
             int nextblock = currentParent->dir.entrylist[dirIndex].firstblock;
@@ -747,7 +751,7 @@ void myremove( const char * path)
                   buffer->data[i] = '\0';
                }
                // save the number ---> go to next block ---> delete previous block number
-               int saveblkno = nextblock; nextblock = FAT[nextblock]; deletefat(nextblock);
+               int saveblkno = nextblock; nextblock = FAT[nextblock]; deletefat(saveblkno);
             }
             currentParent->dir.entrylist[dirIndex].firstblock = UNUSED;
             printf("File is now deleted!\n");
@@ -793,10 +797,6 @@ void mychdir( const char * path)
          parentDirIndex = currentDirIndex;
          currentDirIndex = currentParent->dir.entrylist[dirIndex].firstblock;
          currentParent = &virtualDisk[currentDirIndex];
-      }
-      else
-      {
-         printf("%s Not found in Path\n", token);
       }
       token = strtok_r(NULL, "/",&rest);
    }
