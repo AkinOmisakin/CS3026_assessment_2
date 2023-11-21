@@ -121,6 +121,9 @@ void addfatentry ( int blokno) ;
 void addtofatentry (int blokno , int newblokno) ;
 int findfilebyname (dirblock_t * current, const char * filename);
 void deletefat(int blokno);
+void CopyToMyFILE ( FILE * realfile, MyFILE * fakefile) ;
+void CopyToRealFILE ( MyFILE * fakefile, FILE * realfile);
+void movefile (const char* file1, const char * file2) ;
 #endif
 
 /*

@@ -372,7 +372,7 @@ int myfgetc ( MyFILE * stream )
    //stream->buffer = virtualDisk[stream->blockno]; // get buffer of current block
    character = stream->buffer.data[stream->pos]; // get each character of the buffer
    stream->pos++; // pos++
-   if (stream->pos == BLOCKSIZE - 1)
+   if (stream->pos >= BLOCKSIZE - 1)
    {
       //print the current block to terminal
       printBlock(stream->blockno);

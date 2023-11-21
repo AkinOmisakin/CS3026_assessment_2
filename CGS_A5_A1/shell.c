@@ -159,5 +159,43 @@ int main()
     }
     //write
     writedisk("virtualdiskA5_A1_d");
+
+    /* A3 Copy functions test
+    */
+    //COPY from real file in hard disk to virtual disk
+    /* IF THERE IS ALREADY TEXT IN testfilecopy2.txt DELETE THE CONTENTS
+        THEN RUN THE CODE BELOW */
+    mychdir("/");
+    FILE * realfile = fopen("testfilecopy1.txt", "r");
+    MyFILE * fakefile = myfopen("testfile5.txt", "w");
+    CopyToMyFILE(realfile, fakefile);
+    fclose(realfile);
+    myfclose(fakefile);
+    // Copy Vice versa function
+    mychdir("/");
+    FILE * realfile2 = fopen("testfilecopy2.txt", "w");
+    fakefile = myfopen("testfile5.txt", "r");
+    CopyToRealFILE(fakefile, realfile2);
+    fclose(realfile);
+    myfclose(fakefile);  
+    writedisk("virtualdiskA3");
+    // deleting files
+    mychdir("/");
+    myremove("testfile5.txt");
+  
+    /* A2 Copy and move function
+        */
+    mychdir("/");
+    MyFILE * newfile1 = myfopen("testfile6.txt", "w");
+    char text6 [32] = "This is the text for tesfile 6";
+    for (int i=0;i<sizeof(text6);++i)
+    {
+        myfputc(text6[i], newfile1);
+    }
+    myfclose(newfile1);
+    newfile1 = myfopen("testfile6.txt", "r");
+    MyFILE * newfile2 = myfopen("testfile7.txt", "w");
+    movefile("testfile6.txt", "testfile7.txt");
+    writedisk("virtualdiskA2");
     return 0 ;
 }

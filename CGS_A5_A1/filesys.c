@@ -4,6 +4,7 @@
  * 
  */
 #include <stdio.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
@@ -159,8 +160,7 @@ MyFILE * myfopen ( const char * filename, const char * mode )
       printf("file not opened in the appropriate mode\n");
       return NULL; // return nothing
    }
-   // ----------------------------------------------------------------------- start
-   //currentDirIndex = rootDirIndex;
+   
    /* seperate the directory from the file name*/
    char * lastSlash = strrchr(filename, '/');
    if (lastSlash != NULL)
@@ -210,7 +210,6 @@ MyFILE * myfopen ( const char * filename, const char * mode )
          //get blockno and buffer of existing file
          file_ptr->blockno = currentParent->dir.entrylist[dirIndex].firstblock;
          file_ptr->buffer = virtualDisk[file_ptr->blockno];
-         
          return file_ptr;
       }
       
@@ -259,7 +258,7 @@ MyFILE * myfopen ( const char * filename, const char * mode )
       //get blockno and buffer of existing file 
       file_ptr->blockno = currentParent->dir.entrylist[dirIndex].firstblock;
       file_ptr->buffer = virtualDisk[file_ptr->blockno];
-
+      file_ptr->pos = 0;
       // mode message
       printf("File opened in '%c' mode\n",*file_ptr->mode);
       return file_ptr;
@@ -388,9 +387,7 @@ int myfgetc ( MyFILE * stream )
       return EOF;
    }
    int character;
-   //stream->buffer = virtualDisk[stream->blockno]; // get buffer of current block
-   character = stream->buffer.data[stream->pos]; // get each character of the buffer
-   stream->pos++; // pos++
+   stream->buffer = virtualDisk[stream->blockno]; // get buffer of current block
    if (stream->pos == BLOCKSIZE - 1)
    {
       //print the current block to terminal
@@ -404,6 +401,8 @@ int myfgetc ( MyFILE * stream )
       stream->blockno = FAT[stream->blockno];
       stream->pos = 0; // reset pos
    }
+   character = stream->buffer.data[stream->pos]; // get each character of the buffer
+   stream->pos++; // pos++
    return character;
 }
 
@@ -417,11 +416,13 @@ void myfputc ( int b, MyFILE * stream )
       //output error if not in "w" mode
       printf("MyFILE mode not set to 'w' mode \n");
    }
+   else
+   {
    // creat new block to write on 
    diskblock_t *current = &stream->buffer;
 
    // checks if the pos is >= to 1023 
-   if (stream->pos == BLOCKSIZE - 1 ) 
+   if (stream->pos >= BLOCKSIZE - 1 ) 
    {
       printf("buffer is full\n");
       // write buffer to if buffer is full to current block number location
@@ -450,6 +451,7 @@ void myfputc ( int b, MyFILE * stream )
    // add the data b to the buffer data at the current pos of stream(file)
    current->data[stream->pos] = (Byte) b;
    stream->pos++;//increase pos
+   }
 }
 
 /*  mymkdir function
@@ -553,9 +555,9 @@ char ** mylistdir (const char * path)
       for (int i = 0; i < DIRENTRYCOUNT; i++) 
       {  
          // allocate memory to each pointer in the list
-         CharList[i] = malloc(sizeof(char)*MAXNAME);
+         CharList[i] = (char*) malloc(sizeof(char)*MAXNAME);
          // set the name of each entry (i) in the current parent (entrylist) into the list at index i
-         strcpy(CharList[i], currentParent->dir.entrylist[i].name);
+         strncpy(CharList[i], currentParent->dir.entrylist[i].name, MAXNAME);
       }
       return CharList; // return List 
    }
@@ -602,7 +604,7 @@ void myrmdir ( const char * path )
    char *token, *rest; // tokenize path and save pointer
    char *pathCopy = strdup(path); // copy path
    diskblock_t *currentParent = &virtualDisk[currentDirIndex];
-   fatentry_t prevDirIndex = 0;
+   int prevDirIndex = 0;
    int dirIndex;
    token = strtok_r(pathCopy, "/", &rest);
    while (token != NULL)
@@ -623,11 +625,18 @@ void myrmdir ( const char * path )
    }
    diskblock_t * prevParent = &virtualDisk[prevDirIndex];
    direntry_t p;
+   for (int i = 0; i < MAXNAME; ++i)
+   {
+      p.name[i] = '\0';
+   }
+   p.unused = TRUE;
+   p.firstblock = NULL;
+   p.filelength = 0;
+   p.entrylength = 0;
+   p.isdir= FALSE;
    if (dirIndex != EOF)
    {
-      strncpy(p.name, "\0", MAXNAME);
       prevParent->dir.entrylist[dirIndex] = p;
-      prevParent->dir.entrylist[dirIndex].unused = TRUE;
       deletefat(currentDirIndex);
       printf("deleted\n");
    }
@@ -683,8 +692,8 @@ void myremove( const char * path)
       path = lastSlash + 1;  // this will be the name of the file only
 
       mychdir(pathCopy); // change to directory
-      currentParent = &virtualDisk[currentDirIndex];
-      int dirIndex = findfilebyname(&currentParent->dir, path);
+      currentParent = &virtualDisk[currentDirIndex];// update current parent
+      int dirIndex = findfilebyname(&currentParent->dir, path); //get dir index of file by name
       if (dirIndex != EOF)
       {
          if (currentParent->dir.entrylist[dirIndex].isdir == FALSE)
@@ -695,7 +704,7 @@ void myremove( const char * path)
             currentParent->dir.entrylist[dirIndex].entrylength = 0;
             for (int i=0;i<MAXNAME;++i) 
             {
-               currentParent->dir.entrylist[dirIndex].name[i] = "\0"; //This can be used also
+               currentParent->dir.entrylist[dirIndex].name[i] = '\0'; //This can be used also
             }
             // remove the file buffer(s) from the FAT table
             int nextblock = currentParent->dir.entrylist[dirIndex].firstblock;
@@ -710,7 +719,7 @@ void myremove( const char * path)
                // save the number ---> go to next block ---> delete previous block number
                int saveblkno = nextblock; nextblock = FAT[nextblock]; deletefat(saveblkno);
             }
-            currentParent->dir.entrylist[dirIndex].firstblock = UNUSED;
+            currentParent->dir.entrylist[dirIndex].firstblock = NULL;
             printf("File is now deleted!\n");
             
          }
@@ -753,7 +762,7 @@ void myremove( const char * path)
                // save the number ---> go to next block ---> delete previous block number
                int saveblkno = nextblock; nextblock = FAT[nextblock]; deletefat(saveblkno);
             }
-            currentParent->dir.entrylist[dirIndex].firstblock = UNUSED;
+            currentParent->dir.entrylist[dirIndex].firstblock = NULL;
             printf("File is now deleted!\n");
          }
          else
@@ -766,7 +775,6 @@ void myremove( const char * path)
          printf("FileNotFoundError!\n");
       }
 }
-
 
 /*  mychdir function || mychdir("..") --> goes to previous dir || mychdir("/") --> goes to root
  */
@@ -817,3 +825,93 @@ void printBlock ( int blockIndex )
    printf ( "virtualdisk[%d] = %s\n", blockIndex, virtualDisk[blockIndex].data ) ;
 }
 
+/* A3 Copy function
+   */
+void CopyToMyFILE ( FILE * realfile, MyFILE * fakefile)
+{
+   // read real file to string
+   fseek(realfile, 0, SEEK_END);
+    long int file_size = ftell(realfile);
+    fseek(realfile, 0, SEEK_SET);
+     char *Text = (char *)malloc(file_size + 1);
+   fread(Text, 1, file_size, realfile);
+   Text[file_size] = '\0';
+   // write string to fake file
+   for (int i=0; i < file_size;++i)
+   {
+      myfputc(Text[i], fakefile);
+   }
+   printf("Real file copied to disk\n");
+}
+void CopyToRealFILE ( MyFILE * fakefile, FILE * realfile)
+{
+   // copy fake file into real file
+   int character = myfgetc(fakefile);
+   // while character isnt EOF
+   while(character != EOF)
+   {
+      // write to file each character
+      fprintf(realfile, "%c", character);
+      // get new character
+      character = myfgetc(fakefile);
+   }
+}
+
+/* A2 Copy Move function
+   */
+void movefile (const char* file1, const char * file2) 
+{
+   // get contents of file1
+   char *token, *rest; // tokenize path and save pointer
+   char *pathCopy = strdup(file1); // copy path of file you want to copy from
+   diskblock_t *buffer= &virtualDisk[rootDirIndex];
+   token = strtok_r(pathCopy, "/", &rest); 
+   while (token != NULL)
+   {
+      int dirIndex = findfilebyname(&buffer->dir, token); // find directory by name
+      //currentDir = &currentParent->dir.entrylist[dirIndex]; // change into path directory !!
+      if (dirIndex != EOF)
+      {
+         // update buffer and index
+         currentDirIndex = buffer->dir.entrylist[dirIndex].firstblock;
+         buffer = &virtualDisk[currentDirIndex];
+      }
+      else
+      {
+         printf("PLZ imput correct path!\n");
+      }
+      token = strtok_r(NULL, "/",&rest);
+   }
+   char * content[BLOCKSIZE]; // char array that hold content of buffer
+   // copy contents of buffer data to array
+   for (int i =0;i<BLOCKSIZE;++i)
+   {
+      content[i] = buffer->data[i];
+   }
+   // create file2 and copy contents to file2
+   char * rest2;
+   pathCopy = strdup(file2); // copy path of the file you want to copy to
+   buffer= &virtualDisk[rootDirIndex]; // reset buffer
+   token = strtok_r(pathCopy, "/", &rest2);
+   while (token != NULL)
+   {
+      int dirIndex = findfilebyname(&buffer->dir, token); // find directory by name
+      //currentDir = &currentParent->dir.entrylist[dirIndex]; // change into path directory !!
+      if (dirIndex != EOF)
+      {
+         //update buffer and index
+         currentDirIndex = buffer->dir.entrylist[dirIndex].firstblock;
+         buffer = &virtualDisk[currentDirIndex];
+      }
+      else
+      {
+         printf("PLZ imput correct path!\n");
+      }
+      token = strtok_r(NULL, "/",&rest2);
+   }
+   // write to buffer of file2 the content that was copied 
+   for (int i =0;i<BLOCKSIZE;++i)
+   {
+      buffer->data[i] = content[i];
+   }
+}
