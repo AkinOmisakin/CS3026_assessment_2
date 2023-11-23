@@ -3,7 +3,7 @@ Creating directory...
 Creating directory...
 Creating File...
 File opened in 'w' mode
-File opened in Directory index  =  5 
+File opened in Directory index = 5 
 file is now closed
 Path contents ... 
 Current Directory index is now =  5 
@@ -13,7 +13,7 @@ Path contents ...
 testfile1.txt
 Creating File...
 File opened in 'w' mode
-File opened in Directory index  =  5 
+File opened in Directory index = 5 
 file is now closed
 Path contents ... 
 testfile1.txt
@@ -21,7 +21,7 @@ testfile2.txt
 Creating directory...
 Creating File...
 File opened in 'w' mode
-File opened in Directory index  =  8 
+File opened in Directory index = 8 
 file is now closed
 Path contents ... 
 testfile3.txt
@@ -50,12 +50,12 @@ writedisk> virtualdisk[0] = CS3026 Operating Systems Assessment 2023
 Current Directory index is now =  3 
 Creating File...
 File opened in 'w' mode
-File opened in Directory index  =  3 
+File opened in Directory index = 3 
 Real file copied to disk
 file is now closed
 Current Directory index is now =  3 
 File opened in 'r' mode
-virtualdisk[4] = This is some text to be copied to testfilecopy2
+File opened in Directory index = 3 
 file is now closed
 writedisk> virtualdisk[0] = CS3026 Operating Systems Assessment 2023
 Current Directory index is now =  3 
@@ -63,10 +63,11 @@ File is now deleted!
 Current Directory index is now =  3 
 Creating File...
 File opened in 'w' mode
-File opened in Directory index  =  3 
+File opened in Directory index = 3 
 file is now closed
 File opened in 'r' mode
+File opened in Directory index = 3 
 Creating File...
 File opened in 'w' mode
-File opened in Directory index  =  3 
+File opened in Directory index = 3 
 writedisk> virtualdisk[0] = CS3026 Operating Systems Assessment 2023

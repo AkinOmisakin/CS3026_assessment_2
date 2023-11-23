@@ -28,6 +28,8 @@
 #define ENDOFCHAIN     0
 #define EOF           -1
 
+#define LOCKED        1
+#define UNLOCKED      0
 
 typedef unsigned char Byte ;
 
@@ -42,6 +44,13 @@ typedef short fatentry_t ;
 
 typedef fatentry_t fatblock_t [ FATENTRYCOUNT ] ;
 
+
+/* Introducing extra struct for block 0 
+*/
+typedef struct block0 {
+   char name [MAXNAME] ;
+   int lock;
+} block0_t ;
 
 /* create a type direntry_t
  */

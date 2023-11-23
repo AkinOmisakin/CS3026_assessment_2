@@ -197,5 +197,6 @@ int main()
     MyFILE * newfile2 = myfopen("testfile7.txt", "w");
     movefile("testfile6.txt", "testfile7.txt");
     writedisk("virtualdiskA2");
+    
     return 0 ;
 }
