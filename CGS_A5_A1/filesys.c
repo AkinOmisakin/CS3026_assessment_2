@@ -95,7 +95,7 @@ void format ( )
 
    // set block0 to block
    block0 = (block0_t*) &block;
-   block0->lock = UNLOCKED; // set lock to unlocked
+   block0->lock = LOCKED; // set lock to locked
    block0->name[0] = "VirtualDisk"; // set name to null;
 	/* prepare FAT table
 	 * write FAT blocks to virtual disk
@@ -309,8 +309,9 @@ int findUNUSEDdirentry (dirblock_t *dir)
    */ 
 void addfatentry (int blokno) 
 {
-   // add mutex lock
+   // unlock mutex lock
    pthread_mutex_lock(&fatLock);
+   block0->lock = UNLOCKED; // set lock to unlocked
    //check if blokno size fits in block 1 or block 2
    if (blokno > 1024)
    {
@@ -331,14 +332,16 @@ void addfatentry (int blokno)
    }
    // unlock mutex
    pthread_mutex_unlock(&fatLock);
+   block0->lock = LOCKED; // set lock to locked
 }
 
 /*adds a fat entry to existing FAT chain
    */ 
 void addtofatentry (int blokno, int newblokno)
 {
-   // add mutex lock
+   // unlock mutex lock
    pthread_mutex_lock(&fatLock);
+   block0->lock = UNLOCKED; // set lock to unlocked
    // checks within range
    if (blokno > 1024)
    {
@@ -358,6 +361,7 @@ void addtofatentry (int blokno, int newblokno)
    }
    // unlock mutex
    pthread_mutex_unlock(&fatLock);
+   block0->lock = LOCKED; // set lock to locked
 }
 
 // find an UNUSED fat entry in FAT
@@ -659,8 +663,9 @@ void myrmdir ( const char * path )
 
 void deletefat (int blokno) 
 {
-   // add mutex lock
+   // unlock mutex
    pthread_mutex_lock(&fatLock);
+   block0->lock = UNLOCKED; // set lock to unlocked
    //check if blokno size fits in block 1 or block 2
    if (blokno > 1024)
    {
@@ -679,8 +684,9 @@ void deletefat (int blokno)
       FAT[blokno] = UNUSED;
       virtualDisk[2].fat[blokno] = UNUSED; 
    }
-   // unlock mutex
+   // lock mutex
    pthread_mutex_unlock(&fatLock);
+   block0->lock = LOCKED; // set lock to locked
 }
 /*  myremove function
  */
