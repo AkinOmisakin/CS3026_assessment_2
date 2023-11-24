@@ -1,13 +1,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "filesys.h"
 
 int main()
 {
+    /* A5_A1 tests
+    */
     // test format
-    format();
-    // declare pointer to pointers
+    // initialise mutex
+    format(); 
+    // declare pointer to list of directories
     char ** listdirs;
     //test mymkdir
     mymkdir("/firstdir/seconddir");
@@ -197,6 +201,10 @@ int main()
     MyFILE * newfile2 = myfopen("testfile7.txt", "w");
     movefile("testfile6.txt", "testfile7.txt");
     writedisk("virtualdiskA2");
-    
+
+    /* A1 mutex close
+        */
+    destroyMutex();
+    writedisk("virtualdiskA1");
     return 0 ;
 }

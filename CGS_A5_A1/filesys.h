@@ -133,6 +133,7 @@ void deletefat(int blokno);
 void CopyToMyFILE ( FILE * realfile, MyFILE * fakefile) ;
 void CopyToRealFILE ( MyFILE * fakefile, FILE * realfile);
 void movefile (const char* file1, const char * file2) ;
+void destroyMutex ();
 #endif
 
 /*

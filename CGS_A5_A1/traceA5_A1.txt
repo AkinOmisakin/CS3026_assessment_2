@@ -71,3 +71,4 @@ Creating File...
 File opened in 'w' mode
 File opened in Directory index = 3 
 writedisk> virtualdisk[0] = CS3026 Operating Systems Assessment 2023
+writedisk> virtualdisk[0] = CS3026 Operating Systems Assessment 2023

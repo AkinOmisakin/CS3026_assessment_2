@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-// #include <pthread.h>
+#include <pthread.h>
 #include "filesys.h"
 
 
@@ -17,8 +17,8 @@ fatentry_t   FAT         [MAXBLOCKS] ;           // define a file allocation tab
 fatentry_t   rootDirIndex            = 0 ;       // rootDir will be set by format
 direntry_t * currentDir              = NULL ;
 fatentry_t   currentDirIndex         = 0 ;
-// pthread_mutex_t fatLock;
-// block0_t *block0 = block0 = (block0_t*)&virtualDisk[0];
+pthread_mutex_t fatLock;
+block0_t *block0;
 
 /* writedisk : writes virtual disk out to physical disk
  * 
@@ -78,13 +78,9 @@ void writeblock ( diskblock_t * block, int block_address )
  */
 void format ( )
 {
-   
-   /*
-   direntry_t  rootDir ;
-   int         pos             = 0 ;
-   int         fatentry        = 0 ;
-   int         fatblocksneeded =  (MAXBLOCKS / FATENTRYCOUNT ) ;
-   */
+   // initialise mutex
+   pthread_mutex_init(&fatLock, NULL);
+
    /* prepare block 0 : fill it with '\0',
     * use strcpy() to copy some text to it for test purposes
 	* write block 0 to virtual disk
@@ -96,6 +92,11 @@ void format ( )
    }
    strcpy((char*)block.data, "CS3026 Operating Systems Assessment 2023");
    writeblock(&block,0);
+
+   // set block0 to block
+   block0 = (block0_t*) &block;
+   block0->lock = UNLOCKED; // set lock to unlocked
+   block0->name[0] = "VirtualDisk"; // set name to null;
 	/* prepare FAT table
 	 * write FAT blocks to virtual disk
 	 */
@@ -104,6 +105,7 @@ void format ( )
    diskblock_t block_1;
    diskblock_t block_2;
 
+   
    // all FAT entries are UNUSED
    for(int i = 0; i < BLOCKSIZE; ++i)
    {
@@ -307,7 +309,8 @@ int findUNUSEDdirentry (dirblock_t *dir)
    */ 
 void addfatentry (int blokno) 
 {
-   
+   // add mutex lock
+   pthread_mutex_lock(&fatLock);
    //check if blokno size fits in block 1 or block 2
    if (blokno > 1024)
    {
@@ -326,13 +329,16 @@ void addfatentry (int blokno)
       FAT[blokno] = ENDOFCHAIN;
       virtualDisk[2].fat[blokno] = ENDOFCHAIN; 
    }
+   // unlock mutex
+   pthread_mutex_unlock(&fatLock);
 }
 
 /*adds a fat entry to existing FAT chain
    */ 
 void addtofatentry (int blokno, int newblokno)
 {
-   
+   // add mutex lock
+   pthread_mutex_lock(&fatLock);
    // checks within range
    if (blokno > 1024)
    {
@@ -350,6 +356,8 @@ void addtofatentry (int blokno, int newblokno)
       FAT[blokno] = newblokno;
       virtualDisk[2].fat[blokno] = newblokno;
    }
+   // unlock mutex
+   pthread_mutex_unlock(&fatLock);
 }
 
 // find an UNUSED fat entry in FAT
@@ -651,7 +659,8 @@ void myrmdir ( const char * path )
 
 void deletefat (int blokno) 
 {
-   
+   // add mutex lock
+   pthread_mutex_lock(&fatLock);
    //check if blokno size fits in block 1 or block 2
    if (blokno > 1024)
    {
@@ -670,6 +679,8 @@ void deletefat (int blokno)
       FAT[blokno] = UNUSED;
       virtualDisk[2].fat[blokno] = UNUSED; 
    }
+   // unlock mutex
+   pthread_mutex_unlock(&fatLock);
 }
 /*  myremove function
  */
@@ -820,7 +831,7 @@ void mychdir( const char * path)
    while (token != NULL)
    {
       int dirIndex = findfilebyname(&currentParent->dir, token); // find directory by name
-      //currentDir = &currentParent->dir.entrylist[dirIndex]; // change into path directory !!
+      
       if (dirIndex != EOF)
       {
          parentDirIndex = currentDirIndex; // update parentDirIndex
@@ -943,4 +954,11 @@ void movefile (const char* file1, const char * file2)
    {
       buffer->data[i] = content[i];
    }
+}
+
+
+void destroyMutex()
+{
+   // Destroy mutex
+   pthread_mutex_destroy(&fatLock);
 }
