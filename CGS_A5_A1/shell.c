@@ -16,11 +16,13 @@ int main()
     //test mymkdir
     mymkdir("/firstdir/seconddir");
     MyFILE * ptr_file = myfopen("/firstdir/seconddir/testfile1.txt","w");
+    //add text to testfile1.txt
     char text1 [32] = "This is the text for tesfile 1";
     for (int i=0;i<sizeof(text1);++i)
     {
         myfputc(text1[i], ptr_file);
     }
+    //close file
     myfclose(ptr_file);
     // test mylistdir
     printf("Path contents ... \n");
